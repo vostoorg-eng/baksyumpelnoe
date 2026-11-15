@@ -2,7 +2,7 @@ name: PS4 build
 on:
   workflow_dispatch:
   push:
-    paths: ['.github/workflows/ps4.yml']
+    paths: ['.github/workflows/ps4.yml','ps4/**']
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -23,29 +23,25 @@ jobs:
           ROOT=$(dirname "$(find $HOME/oo -type d -name samples | head -1)")
           echo "OO_PS4_TOOLCHAIN=$ROOT" >> $GITHUB_ENV
           chmod -R +x $ROOT/bin/linux
-      - name: Show SDL2 sample
+      - name: Build Baksyumpelnoe
         run: |
-          cd $OO_PS4_TOOLCHAIN/samples/SDL2/SDL2
-          echo "=== main.cpp ==="; cat main.cpp
-          echo "=== Game.h ==="; cat Game.h
-          echo "=== Game.cpp ==="; head -120 Game.cpp   
-      - name: Build graphics samples
-        run: |
-          for s in graphics input SDL2 piglet; do
-            echo "=== BUILD $s ==="
-            (cd $OO_PS4_TOOLCHAIN/samples/$s && make) || echo "FAILED: $s"
-          done
+          cd $OO_PS4_TOOLCHAIN/samples
+          rm -rf baksyumpelnoe
+          cp -r SDL2 baksyumpelnoe
+          cd baksyumpelnoe
+          mv SDL2 baksyumpelnoe
+          rm -f baksyumpelnoe/*.cpp baksyumpelnoe/*.h baksyumpelnoe/*.bat baksyumpelnoe/*.vcxproj*
+          cp $GITHUB_WORKSPACE/ps4/main.cpp $GITHUB_WORKSPACE/ps4/game.h baksyumpelnoe/
+          sed -i 's/BREW00090/BAKS00001/g; s/SDLEXAMPLE000000/BAKSYUMPELNOE000/g; s/OpenOrbis SDL Sample/Baksyumpelnoe/' Makefile
+          rm -f sce_sys/param.sfo
+          make
       - name: Collect pkg
         run: |
           mkdir out
-          for s in graphics input SDL2 piglet; do
-            for p in $(find $OO_PS4_TOOLCHAIN/samples/$s -name '*.pkg'); do
-              cp "$p" "out/${s}_$(basename $p)"
-            done
-          done
+          find $OO_PS4_TOOLCHAIN/samples/baksyumpelnoe -name '*.pkg' -exec cp {} out/ \;
           ls -l out
       - uses: actions/upload-artifact@v4
         with:
-          name: ps4-test-pkg
+          name: baksyumpelnoe-ps4
           path: out/
           if-no-files-found: error
