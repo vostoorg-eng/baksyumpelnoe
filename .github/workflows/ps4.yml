@@ -23,6 +23,13 @@ jobs:
           ROOT=$(dirname "$(find $HOME/oo -type d -name samples | head -1)")
           echo "OO_PS4_TOOLCHAIN=$ROOT" >> $GITHUB_ENV
           chmod -R +x $ROOT/bin/linux
+      - name: Show SDL2 sample
+        run: |
+          cd $OO_PS4_TOOLCHAIN/samples/SDL2
+          echo "=== FILES ==="; find . -type f | grep -v video.mp4 | head -50
+          echo "=== MAKEFILE ==="; cat Makefile
+          echo "=== README ==="; cat README.md | head -40
+          echo "=== MAIN ==="; grep -n "SDL_Init\|SDL_CreateWindow\|SDL_CreateRenderer\|SDL_Joystick\|SDL_GameController\|int main" -r . | head -30
       - name: Build graphics samples
         run: |
           for s in graphics input SDL2 piglet; do
