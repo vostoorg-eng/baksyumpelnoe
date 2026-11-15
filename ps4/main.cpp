@@ -1,6 +1,6 @@
 #include <SDL2/SDL.h>
-#include "game.h"
 #include <sstream>
+#include "game.h"
 std::stringstream debugLogStream;
 
 int main(int argc,char* args[]){
@@ -8,7 +8,7 @@ int main(int argc,char* args[]){
  SDL_Window* window=SDL_CreateWindow("main",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,1920,1080,0);
  if(!window)return 1;
  SDL_Surface* surf=SDL_GetWindowSurface(window);
-  gScreen=surf;
+ gScreen=surf;
  SDL_Renderer* rd=SDL_CreateSoftwareRenderer(surf);
  if(!rd)return 1;
  SDL_SetRenderDrawBlendMode(rd,SDL_BLENDMODE_BLEND);
@@ -22,8 +22,8 @@ int main(int argc,char* args[]){
   SDL_Event e;while(SDL_PollEvent(&e)){}
   SDL_JoystickUpdate();
   if(!pad&&now>retry){retry=now+1000;if(SDL_NumJoysticks()>0)pad=SDL_JoystickOpen(0);}
-  Input in;in.jx=0;in.jy=0;in.cross=false;in.options=false;in.btn=0;in.pad=pad!=NULL;
-  for(int i=0;i<4;i++)in.axis[i]=0;
+  Input in={};
+  in.pad=pad!=NULL;
   if(pad){
    for(int i=0;i<4;i++)in.axis[i]=SDL_JoystickGetAxis(pad,i)/32768.0f;
    for(int i=0;i<20;i++)if(SDL_JoystickGetButton(pad,i))in.btn|=(1u<<i);
@@ -36,7 +36,11 @@ int main(int argc,char* args[]){
    if(in.btn&(1u<<14))in.jy=1;
    unsigned pressed=in.btn&~prev;
    in.cross=(pressed&(1u<<0))!=0;
+   in.circle=(pressed&(1u<<1))!=0;
+   in.square=(pressed&(1u<<2))!=0;
    in.options=(pressed&(1u<<9))!=0;
+   in.up=(pressed&(1u<<13))!=0;
+   in.down=(pressed&(1u<<14))!=0;
    prev=in.btn;
   }
   gameUpdate(dt,in);
