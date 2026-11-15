@@ -25,7 +25,7 @@ for(const [x,z,c,r,l] of [[0.34,0.17,WH,0.085,0.42],[0.34,-0.17,WH,0.085,0.42],[
 const p=new T.Group();p.position.set(x,0.43,z);dogM.add(p);
 const lg=cyl(r,r*0.75,l,c);lg.position.y=-l/2;p.add(lg);
 const paw=sph(0.075,1.35,0.55,1.05,c);paw.position.set(0.04,-l+0.02,0);p.add(paw);legs.push(p)}
-const tl=cyl(0.05,0.015,0.5,BK);tl.rotation.z=1.0;tl.position.set(-0.21,0.13,0);tailP.add(tl);
+const tl2=cyl(0.05,0.015,0.5,BK);tl2.rotation.z=1.0;tl2.position.set(-0.21,0.13,0);tailP.add(tl2);
 const dogShadow=new T.Mesh(new T.CircleGeometry(0.5,10),new T.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.25,depthWrite:false}));
 dogShadow.rotation.x=-Math.PI/2;dogShadow.position.y=0.02;dogShadow.scale.set(1.6,1,1);dogG.add(dogShadow);
 const _sd=sync;sync=function(dt,t){_sd(dt,t);tongue.visible=anx<35&&panic<=0};
