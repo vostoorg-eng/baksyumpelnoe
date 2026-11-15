@@ -14,6 +14,8 @@ struct Food{float x,y;int got;};
 static Food food[5];
 static float dogx,dogy,ddx,ddy,anx,seen,panic,momx,momy,momdir;
 static int momi,stolen,day;
+static SDL_Surface *gScreen=NULL,*gBg=NULL;
+static bool gNoBg=false;
 
 static void newDay(){
  dogx=60;dogy=100;ddx=0;ddy=1;anx=10;seen=0;panic=0;stolen=0;
@@ -88,30 +90,49 @@ static void disc(SDL_Renderer*r,float cx,float cy,float rad,int R,int G,int B){
  }
 }
 
-static void gameDraw(SDL_Renderer*r,const Input&in){
+static void drawStatic(SDL_Renderer*r){
  px(r,0,0,1920,1080,30,30,34);
  for(int i=0;i<5;i++)fr(r,ROOMS[i].x,ROOMS[i].y,ROOMS[i].w,ROOMS[i].h,ROOMS[i].r,ROOMS[i].g,ROOMS[i].b);
  for(int i=0;i<13;i++)fr(r,WALLS[i].x,WALLS[i].y,WALLS[i].w,WALLS[i].h,78,52,46);
  for(int i=0;i<7;i++)fr(r,FURN[i].x,FURN[i].y,FURN[i].w,FURN[i].h,121,85,72);
+}
+
+static void gameDraw(SDL_Renderer*r,const Input&in){
+ if(!gBg&&!gNoBg&&gScreen){
+  gBg=SDL_ConvertSurface(gScreen,gScreen->format,0);
+  if(gBg){
+   SDL_Renderer*br=SDL_CreateSoftwareRenderer(gBg);
+   if(br){drawStatic(br);SDL_DestroyRenderer(br);}
+   else{SDL_FreeSurface(gBg);gBg=NULL;gNoBg=true;}
+  }else gNoBg=true;
+ }
+ if(gBg&&gScreen)SDL_BlitSurface(gBg,NULL,gScreen,NULL);
+ else drawStatic(r);
+
  for(int i=0;i<5;i++)if(!food[i].got)disc(r,food[i].x,food[i].y,7,229,57,53);
+
  bool sneak=sqrtf(in.jx*in.jx+in.jy*in.jy)<0.55f;
  float range=(sneak?110.f:180.f)*SC;
  float mx=OX+momx*SC,my=momy*SC;
- int col=seen>0?255:255,colg=seen>0?40:235,colb=seen>0?40:59;
- SDL_SetRenderDrawColor(r,col,colg,colb,80);
- const int st=6;
- for(int by=-(int)range;by<=(int)range;by+=st)
-  for(int bx=-(int)range;bx<=(int)range;bx+=st){
-   float d=sqrtf((float)(bx*bx+by*by));if(d>range)continue;
-   float a=atan2f((float)by,(float)bx)-momdir;a=atan2f(sinf(a),cosf(a));
-   if(fabsf(a)>0.6f)continue;
-   SDL_Rect q={(int)(mx+bx),(int)(my+by),st,st};SDL_RenderFillRect(r,&q);
+ float dirx=cosf(momdir),diry=sinf(momdir),ck=cosf(0.6f);
+ SDL_SetRenderDrawColor(r,255,seen>0?40:235,seen>0?40:59,80);
+ int R=(int)range;
+ for(int by=-R;by<=R;by+=3){
+  int x0=1<<30,x1=-(1<<30);
+  for(int bx=-R;bx<=R;bx+=6){
+   float d=sqrtf((float)(bx*bx+by*by));
+   if(d>range||d<1)continue;
+   if(bx*dirx+by*diry>=d*ck){if(bx<x0)x0=bx;if(bx>x1)x1=bx;}
   }
+  if(x0<=x1){SDL_Rect q={(int)mx+x0,(int)my+by,x1-x0+6,3};SDL_RenderFillRect(r,&q);}
+ }
+
  disc(r,momx,momy,12,236,64,122);
  float sh=panic>0?sinf(SDL_GetTicks()/30.f)*2:0;
  disc(r,dogx+sh,dogy,10,10,10,10);
  disc(r,dogx+sh+ddx*9,dogy+ddy*9,6,10,10,10);
  disc(r,dogx+sh+ddx*4,dogy+ddy*4,3.5f,245,245,245);
+
  px(r,20,1030,404,28,0,0,0);
  px(r,24,1034,(int)(anx<100?anx*4:400),20,anx>70?244:255,anx>70?67:179,anx>70?54:0);
  for(int i=0;i<day&&i<20;i++)px(r,20+i*26,990,20,20,255,213,79);
