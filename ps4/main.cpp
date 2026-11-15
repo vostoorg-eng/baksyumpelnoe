@@ -1,5 +1,7 @@
 #include <SDL2/SDL.h>
 #include "game.h"
+#include <sstream>
+std::stringstream debugLogStream;
 
 int main(int argc,char* args[]){
  if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK)!=0)return 1;
