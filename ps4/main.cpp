@@ -8,6 +8,7 @@ int main(int argc,char* args[]){
  SDL_Window* window=SDL_CreateWindow("main",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,1920,1080,0);
  if(!window)return 1;
  SDL_Surface* surf=SDL_GetWindowSurface(window);
+  gScreen=surf;
  SDL_Renderer* rd=SDL_CreateSoftwareRenderer(surf);
  if(!rd)return 1;
  SDL_SetRenderDrawBlendMode(rd,SDL_BLENDMODE_BLEND);
