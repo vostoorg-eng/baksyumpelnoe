@@ -9,14 +9,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install compilers
-        run: sudo apt-get update && sudo apt-get install -y clang lld make
+        run: sudo apt-get update && sudo apt-get install -y clang lld make unzip
       - name: Download OpenOrbis toolchain
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          URL=$(curl -sL https://api.github.com/repos/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/latest | grep browser_download_url | grep 'tar.gz' | head -1 | cut -d '"' -f4)
-          echo "Toolchain: $URL"
+          R=OpenOrbis/OpenOrbis-PS4-Toolchain
+          gh release view --repo $R --json tagName,assets -q '.tagName, (.assets[].name)'
           mkdir -p $HOME/oo
-          curl -sL "$URL" | tar xz -C $HOME/oo
+          cd $HOME/oo
+          gh release download --repo $R --pattern '*.tar.gz' || gh release download --repo $R --pattern '*.zip'
+          ls -l
+          for f in *.tar.gz; do if [ -f "$f" ]; then tar xzf "$f"; fi; done
+          for f in *.zip; do if [ -f "$f" ]; then unzip -q "$f"; fi; done
           ROOT=$(dirname "$(find $HOME/oo -type d -name samples | head -1)")
+          echo "Toolchain root: $ROOT"
           echo "OO_PS4_TOOLCHAIN=$ROOT" >> $GITHUB_ENV
           chmod -R +x $ROOT/bin/linux
       - name: Build hello_world sample
