@@ -6,6 +6,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Install compilers
@@ -46,3 +48,9 @@ jobs:
           name: baksyumpelnoe-ps4
           path: out/
           if-no-files-found: error
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag --repo ${{ github.repository }} || true
+          gh release create latest out/*.pkg --repo ${{ github.repository }} --title "Баксюмпельное для PS4" --notes "Последняя сборка игры. Скачай .pkg и установи на PS4." --latest
