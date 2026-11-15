@@ -23,24 +23,20 @@ jobs:
           ROOT=$(dirname "$(find $HOME/oo -type d -name samples | head -1)")
           echo "OO_PS4_TOOLCHAIN=$ROOT" >> $GITHUB_ENV
           chmod -R +x $ROOT/bin/linux
-      - name: Show samples
+      - name: Build graphics samples
         run: |
-          echo "=== SAMPLES ==="
-          ls $OO_PS4_TOOLCHAIN/samples
-          echo "=== USE VIDEOOUT ==="
-          grep -rl "sceVideoOut" $OO_PS4_TOOLCHAIN/samples | head -20
-          echo "=== USE SDL ==="
-          grep -rl "SDL" $OO_PS4_TOOLCHAIN/samples | head -10
-          echo "=== LIBS ==="
-          ls $OO_PS4_TOOLCHAIN/lib | head -60
-      - name: Build hello_world sample
-        run: |
-          cd $OO_PS4_TOOLCHAIN/samples/hello_world
-          make
+          for s in graphics input SDL2 piglet; do
+            echo "=== BUILD $s ==="
+            (cd $OO_PS4_TOOLCHAIN/samples/$s && make) || echo "FAILED: $s"
+          done
       - name: Collect pkg
         run: |
           mkdir out
-          find $OO_PS4_TOOLCHAIN/samples/hello_world -name '*.pkg' -exec cp {} out/ \;
+          for s in graphics input SDL2 piglet; do
+            for p in $(find $OO_PS4_TOOLCHAIN/samples/$s -name '*.pkg'); do
+              cp "$p" "out/${s}_$(basename $p)"
+            done
+          done
           ls -l out
       - uses: actions/upload-artifact@v4
         with:
