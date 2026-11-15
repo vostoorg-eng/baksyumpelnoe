@@ -15,17 +15,24 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           R=OpenOrbis/OpenOrbis-PS4-Toolchain
-          gh release view --repo $R --json tagName,assets -q '.tagName, (.assets[].name)'
           mkdir -p $HOME/oo
           cd $HOME/oo
           gh release download --repo $R --pattern '*.tar.gz' || gh release download --repo $R --pattern '*.zip'
-          ls -l
           for f in *.tar.gz; do if [ -f "$f" ]; then tar xzf "$f"; fi; done
           for f in *.zip; do if [ -f "$f" ]; then unzip -q "$f"; fi; done
           ROOT=$(dirname "$(find $HOME/oo -type d -name samples | head -1)")
-          echo "Toolchain root: $ROOT"
           echo "OO_PS4_TOOLCHAIN=$ROOT" >> $GITHUB_ENV
           chmod -R +x $ROOT/bin/linux
+      - name: Show samples
+        run: |
+          echo "=== SAMPLES ==="
+          ls $OO_PS4_TOOLCHAIN/samples
+          echo "=== USE VIDEOOUT ==="
+          grep -rl "sceVideoOut" $OO_PS4_TOOLCHAIN/samples | head -20
+          echo "=== USE SDL ==="
+          grep -rl "SDL" $OO_PS4_TOOLCHAIN/samples | head -10
+          echo "=== LIBS ==="
+          ls $OO_PS4_TOOLCHAIN/lib | head -60
       - name: Build hello_world sample
         run: |
           cd $OO_PS4_TOOLCHAIN/samples/hello_world
