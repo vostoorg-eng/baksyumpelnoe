@@ -31,7 +31,8 @@ jobs:
           cd baksyumpelnoe
           mv SDL2 baksyumpelnoe
           rm -f baksyumpelnoe/*.cpp baksyumpelnoe/*.h baksyumpelnoe/*.bat baksyumpelnoe/*.vcxproj*
-                    cp $GITHUB_WORKSPACE/ps4/*.cpp $GITHUB_WORKSPACE/ps4/*.h baksyumpelnoe/ $GITHUB_WORKSPACE/ps4/game.h baksyumpelnoe/
+          cp $GITHUB_WORKSPACE/ps4/*.cpp baksyumpelnoe/
+          cp $GITHUB_WORKSPACE/ps4/*.h baksyumpelnoe/
           sed -i 's/BREW00090/BAKS00001/g; s/SDLEXAMPLE000000/BAKSYUMPELNOE000/g; s/OpenOrbis SDL Sample/Baksyumpelnoe/' Makefile
           rm -f sce_sys/param.sfo
           make
