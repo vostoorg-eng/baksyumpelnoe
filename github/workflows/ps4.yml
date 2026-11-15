@@ -1,0 +1,35 @@
+name: PS4 build
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/ps4.yml']
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compilers
+        run: sudo apt-get update && sudo apt-get install -y clang lld make
+      - name: Download OpenOrbis toolchain
+        run: |
+          URL=$(curl -sL https://api.github.com/repos/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/latest | grep browser_download_url | grep 'tar.gz' | head -1 | cut -d '"' -f4)
+          echo "Toolchain: $URL"
+          mkdir -p $HOME/oo
+          curl -sL "$URL" | tar xz -C $HOME/oo
+          ROOT=$(dirname "$(find $HOME/oo -type d -name samples | head -1)")
+          echo "OO_PS4_TOOLCHAIN=$ROOT" >> $GITHUB_ENV
+          chmod -R +x $ROOT/bin/linux
+      - name: Build hello_world sample
+        run: |
+          cd $OO_PS4_TOOLCHAIN/samples/hello_world
+          make
+      - name: Collect pkg
+        run: |
+          mkdir out
+          find $OO_PS4_TOOLCHAIN/samples/hello_world -name '*.pkg' -exec cp {} out/ \;
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ps4-test-pkg
+          path: out/
+          if-no-files-found: error
