@@ -25,11 +25,10 @@ jobs:
           chmod -R +x $ROOT/bin/linux
       - name: Show SDL2 sample
         run: |
-          cd $OO_PS4_TOOLCHAIN/samples/SDL2
-          echo "=== FILES ==="; find . -type f | grep -v video.mp4 | head -50
-          echo "=== MAKEFILE ==="; cat Makefile
-          echo "=== README ==="; cat README.md | head -40
-          echo "=== MAIN ==="; grep -n "SDL_Init\|SDL_CreateWindow\|SDL_CreateRenderer\|SDL_Joystick\|SDL_GameController\|int main" -r . | head -30
+          cd $OO_PS4_TOOLCHAIN/samples/SDL2/SDL2
+          echo "=== main.cpp ==="; cat main.cpp
+          echo "=== Game.h ==="; cat Game.h
+          echo "=== Game.cpp ==="; head -120 Game.cpp   
       - name: Build graphics samples
         run: |
           for s in graphics input SDL2 piglet; do
