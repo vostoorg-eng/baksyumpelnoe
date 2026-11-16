@@ -2,13 +2,13 @@
 #include <cmath>
 #include <cstring>
 #include <cstdint>
-#define RW 640
-#define RH 360
+#define RW 480
+#define RH 270
 #define WK 0.025f
 static uint32_t fbuf[RW*RH];
 static float zbuf[RW*RH];
 static float cEx,cEy,cEz,cFx,cFy,cFz,cRx,cRz,cUx,cUy,cUz;
-static const float FOC=345.0f;
+static const float FOC=RH*0.9583f;
 static float gCa=1,gSa=0,gPx=0,gPy=0,gPz=0,gSc=1,gYS=1;
 static int gAlpha=255;
 static bool gNoZ=false;
@@ -31,44 +31,36 @@ static void rast(float ax,float ay,float az,float bx,float by,float bz,float cx,
  int y0=(int)fmaxf(0.f,floorf(miny)),y1=(int)fminf((float)(RH-1),ceilf(maxy));
  if(x0>x1||y0>y1)return;
  float ia=1.f/az,ib=1.f/bz,ic=1.f/cz,inv=1.f/area;
+ float dx0=(cy-by)*inv,dx1=(ay-cy)*inv,dx2=(by-ay)*inv;
+ float dy0=-(cx-bx)*inv,dy1=-(ax-cx)*inv,dy2=-(bx-ax)*inv;
+ float sx=x0+0.5f,sy=y0+0.5f;
+ float r0=((sx-bx)*(cy-by)-(sy-by)*(cx-bx))*inv;
+ float r1=((sx-cx)*(ay-cy)-(sy-cy)*(ax-cx))*inv;
+ float r2=((sx-ax)*(by-ay)-(sy-ay)*(bx-ax))*inv;
  unsigned sr=(col>>16)&255,sg=(col>>8)&255,sb=col&255;
+ bool opaque=gAlpha>=255;
+ unsigned a=gAlpha;
  for(int y=y0;y<=y1;y++){
-  float py=y+0.5f;
-  for(int x=x0;x<=x1;x++){
-   float px=x+0.5f;
-   float w0=((px-bx)*(cy-by)-(py-by)*(cx-bx))*inv;
-   float w1=((px-cx)*(ay-cy)-(py-cy)*(ax-cx))*inv;
-   float w2=((px-ax)*(by-ay)-(py-ay)*(bx-ax))*inv;
-   if(w0<0||w1<0||w2<0)continue;
+  float w0=r0,w1=r1,w2=r2;
+  int idx=y*RW+x0;
+  bool inside=false;
+  for(int x=x0;x<=x1;x++,idx++,w0+=dx0,w1+=dx1,w2+=dx2){
+   if(w0<0||w1<0||w2<0){if(inside)break;continue;}
+   inside=true;
    float iz=w0*ia+w1*ib+w2*ic;
-   int idx=y*RW+x;
    if(!gNoZ&&iz<=zbuf[idx])continue;
-   if(gAlpha>=255){zbuf[idx]=iz;fbuf[idx]=col;}
+   if(opaque){zbuf[idx]=iz;fbuf[idx]=col;}
    else{
     uint32_t d=fbuf[idx];
-    unsigned dr=(d>>16)&255,dg=(d>>8)&255,db=d&255,a=gAlpha;
+    unsigned dr=(d>>16)&255,dg=(d>>8)&255,db=d&255;
     fbuf[idx]=(((sr*a+dr*(255-a))/255)<<16)|(((sg*a+dg*(255-a))/255)<<8)|((sb*a+db*(255-a))/255);
    }
   }
+  r0+=dy0;r1+=dy1;r2+=dy2;
  }
 }
 
 static void tri3(float x0,float y0,float z0,float x1,float y1,float z1,float x2,float y2,float z2,uint32_t col){
- float ux=x1-x0,uy=y1-y0,uz=z1-z0,vx=x2-x0,vy=y2-y0,vz=z2-z0;
- float nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
- float nl=sqrtf(nx*nx+ny*ny+nz*nz);
- if(nl<1e-9f)return;
- nx/=nl;ny/=nl;nz/=nl;
- float mx=(x0+x1+x2)/3-cEx,my=(y0+y1+y2)/3-cEy,mz=(z0+z1+z2)/3-cEz;
- if(nx*mx+ny*my+nz*mz>0){nx=-nx;ny=-ny;nz=-nz;}
- float d=nx*0.42f+ny*0.80f+nz*0.33f;
- if(d<0)d=0;
- float k=0.55f+0.45f*d;
- unsigned r=(unsigned)(((col>>16)&255)*k),g=(unsigned)(((col>>8)&255)*k),b=(unsigned)((col&255)*k);
- if(r>255)r=255;
- if(g>255)g=255;
- if(b>255)b=255;
- uint32_t sc=(r<<16)|(g<<8)|b;
  float w[9]={x0,y0,z0,x1,y1,z1,x2,y2,z2};
  float px[3],py[3],pz[3];
  for(int i=0;i<3;i++){
@@ -90,7 +82,30 @@ static void tri3(float x0,float y0,float z0,float x1,float y1,float z1,float x2,
  }
  if(n<3)return;
  float sx[4],sy[4];
- for(int i=0;i<n;i++){sx[i]=RW*0.5f+qx[i]/qz[i]*FOC;sy[i]=RH*0.5f-qy[i]/qz[i]*FOC;}
+ int offL=0,offR=0,offU=0,offD=0;
+ for(int i=0;i<n;i++){
+  sx[i]=RW*0.5f+qx[i]/qz[i]*FOC;sy[i]=RH*0.5f-qy[i]/qz[i]*FOC;
+  if(sx[i]<0)offL++;
+  if(sx[i]>=RW)offR++;
+  if(sy[i]<0)offU++;
+  if(sy[i]>=RH)offD++;
+ }
+ if(offL==n||offR==n||offU==n||offD==n)return;
+ float ux=x1-x0,uy=y1-y0,uz=z1-z0,vx=x2-x0,vy=y2-y0,vz=z2-z0;
+ float nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+ float nl=sqrtf(nx*nx+ny*ny+nz*nz);
+ if(nl<1e-9f)return;
+ nx/=nl;ny/=nl;nz/=nl;
+ float mx=(x0+x1+x2)/3-cEx,my=(y0+y1+y2)/3-cEy,mz=(z0+z1+z2)/3-cEz;
+ if(nx*mx+ny*my+nz*mz>0){nx=-nx;ny=-ny;nz=-nz;}
+ float d=nx*0.42f+ny*0.80f+nz*0.33f;
+ if(d<0)d=0;
+ float k=0.55f+0.45f*d;
+ unsigned r=(unsigned)(((col>>16)&255)*k),g=(unsigned)(((col>>8)&255)*k),b=(unsigned)((col&255)*k);
+ if(r>255)r=255;
+ if(g>255)g=255;
+ if(b>255)b=255;
+ uint32_t sc=(r<<16)|(g<<8)|b;
  for(int i=1;i+1<n;i++)rast(sx[0],sy[0],qz[0],sx[i],sy[i],qz[i],sx[i+1],sy[i+1],qz[i+1],sc);
 }
 
