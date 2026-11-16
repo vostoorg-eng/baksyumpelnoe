@@ -9,16 +9,29 @@
 std::stringstream debugLogStream;
 
 static SDL_Surface* lowSurf=NULL;
+static int fpsV=0,msR=0,msP=0;
 
 static void present3D(){
- if(!lowSurf)lowSurf=SDL_CreateRGBSurfaceFrom(fbuf,RW,RH,32,RW*4,0x00FF0000,0x0000FF00,0x000000FF,0);
- if(lowSurf&&SDL_BlitScaled(lowSurf,NULL,gScreen,NULL)==0)return;
- Uint32* d=(Uint32*)gScreen->pixels;
- int pitch=gScreen->pitch/4;
- for(int y=0;y<gScreen->h;y++){
-  int sy=y*RH/gScreen->h;
-  for(int x=0;x<gScreen->w;x++)d[y*pitch+x]=0xFF000000|fbuf[sy*RW+x*RW/gScreen->w];
+ SDL_PixelFormat* f=gScreen->format;
+ int sc=gScreen->w/RW;
+ if(f->BitsPerPixel==32&&sc>=1&&RH*sc<=gScreen->h){
+  Uint32 rs=f->Rshift,gs=f->Gshift,bs=f->Bshift,am=f->Amask;
+  Uint32* dst=(Uint32*)gScreen->pixels;
+  int pitch=gScreen->pitch/4;
+  for(int y=0;y<RH;y++){
+   Uint32* row=dst+(y*sc)*pitch;
+   const uint32_t* src=fbuf+y*RW;
+   for(int x=0;x<RW;x++){
+    uint32_t c=src[x];
+    Uint32 p=(((c>>16)&255)<<rs)|(((c>>8)&255)<<gs)|((c&255)<<bs)|am;
+    for(int k=0;k<sc;k++)row[x*sc+k]=p;
+   }
+   for(int k=1;k<sc;k++)memcpy(row+k*pitch,row,gScreen->w*4);
+  }
+  return;
  }
+ if(!lowSurf)lowSurf=SDL_CreateRGBSurfaceFrom(fbuf,RW,RH,32,RW*4,0x00FF0000,0x0000FF00,0x000000FF,0);
+ if(lowSurf)SDL_BlitScaled(lowSurf,NULL,gScreen,NULL);
 }
 
 static void hud3D(SDL_Renderer*r,const Input&in){
@@ -42,6 +55,9 @@ static void hud3D(SDL_Renderer*r,const Input&in){
  px(r,150,80,30,30,cr,cg,cb);
  if(idx==2&&!qFinished)for(int i=0;i<3;i++)px(r,100+i*26,126,20,12,i<qReact?102:70,i<qReact?187:70,i<qReact?106:80);
  number(r,100,160,qDone,4,255,255,255);
+ number(r,1650,60,fpsV,4,255,255,255);
+ number(r,1650,100,msR,4,102,187,106);
+ number(r,1650,140,msP,4,66,165,245);
  if(!in.pad)px(r,1500,60,40,40,255,0,0);
  if(fxT>0){
   int c=fx;
@@ -63,7 +79,8 @@ int main(int argc,char* args[]){
  SDL_SetRenderDrawBlendMode(rd,SDL_BLENDMODE_BLEND);
  SDL_Joystick* pad=NULL;
  unsigned prev=0;
- Uint32 last=SDL_GetTicks(),retry=0;
+ Uint32 last=SDL_GetTicks(),retry=0,fpsT=0,sumR=0,sumP=0;
+ int fpsN=0;
  gameInit();
  for(;;){
   Uint32 now=SDL_GetTicks();
@@ -93,9 +110,14 @@ int main(int argc,char* args[]){
    prev=in.btn;
   }
   gameUpdate(dt,in);
+  Uint32 ta=SDL_GetTicks();
   renderWorld3D(now/1000.f,dt);
+  Uint32 tb=SDL_GetTicks();
   present3D();
+  Uint32 tc=SDL_GetTicks();
   hud3D(rd,in);
+  sumR+=tb-ta;sumP+=tc-tb;fpsN++;
+  if(now-fpsT>=1000){fpsV=fpsN;msR=sumR/fpsN;msP=sumP/fpsN;fpsN=0;sumR=0;sumP=0;fpsT=now;}
   SDL_UpdateWindowSurface(window);
  }
  SDL_Quit();
