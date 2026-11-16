@@ -1,0 +1,61 @@
+name: PS4 3D build
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/ps4_3d.yml','ps4_3d/**','ps4/**']
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compilers
+        run: sudo apt-get update && sudo apt-get install -y clang lld make unzip
+      - name: Download OpenOrbis toolchain
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          R=OpenOrbis/OpenOrbis-PS4-Toolchain
+          mkdir -p $HOME/oo
+          cd $HOME/oo
+          gh release download --repo $R --pattern '*.tar.gz' || gh release download --repo $R --pattern '*.zip'
+          for f in *.tar.gz; do if [ -f "$f" ]; then tar xzf "$f"; fi; done
+          for f in *.zip; do if [ -f "$f" ]; then unzip -q "$f"; fi; done
+          ROOT=$(dirname "$(find $HOME/oo -type d -name samples | head -1)")
+          echo "OO_PS4_TOOLCHAIN=$ROOT" >> $GITHUB_ENV
+          chmod -R +x $ROOT/bin/linux
+      - name: Build Baksyumpelnoe 3D
+        run: |
+          cd $OO_PS4_TOOLCHAIN/samples
+          rm -rf baksyumpelnoe3d
+          cp -r SDL2 baksyumpelnoe3d
+          cd baksyumpelnoe3d
+          mv SDL2 baksyumpelnoe3d
+          rm -f baksyumpelnoe3d/*.cpp baksyumpelnoe3d/*.h baksyumpelnoe3d/*.bat baksyumpelnoe3d/*.vcxproj*
+          cp $GITHUB_WORKSPACE/ps4/logic.h baksyumpelnoe3d/
+          cp $GITHUB_WORKSPACE/ps4/render.h baksyumpelnoe3d/
+          cp $GITHUB_WORKSPACE/ps4/family.h baksyumpelnoe3d/
+          cp $GITHUB_WORKSPACE/ps4/quests.h baksyumpelnoe3d/
+          cp $GITHUB_WORKSPACE/ps4_3d/main.cpp baksyumpelnoe3d/
+          cp $GITHUB_WORKSPACE/ps4_3d/render3d.h baksyumpelnoe3d/
+          cp $GITHUB_WORKSPACE/ps4_3d/scene3d.h baksyumpelnoe3d/
+          sed -i 's/BREW00090/BAKS00002/g; s/SDLEXAMPLE000000/BAKSYUMPELNOE3D0/g; s/OpenOrbis SDL Sample/Baksyumpelnoe 3D/' Makefile
+          rm -f sce_sys/param.sfo
+          make
+      - name: Collect pkg
+        run: |
+          mkdir out
+          find $OO_PS4_TOOLCHAIN/samples/baksyumpelnoe3d -name '*.pkg' -exec cp {} out/ \;
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: baksyumpelnoe-ps4-3d
+          path: out/
+          if-no-files-found: error
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest-3d --yes --cleanup-tag --repo ${{ github.repository }} || true
+          gh release create latest-3d out/*.pkg --repo ${{ github.repository }} --title "Баксюмпельное 3D для PS4 (тест)" --notes "3D-версия от третьего лица. Прогресс общий с 2D-версией." --prerelease
